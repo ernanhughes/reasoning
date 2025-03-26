@@ -1,0 +1,16 @@
+# Auto-generated SAE config
+# Created by: get_reasoning_parameters.py
+# Model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+# Date: 2025-03-26 20:25:08
+
+activation: relu
+batch_size: 64
+epochs: 10
+hidden_dim: 16384
+input_dim: 2048
+layer_index: 11
+lr: 0.001
+model_type: llama
+sparsity_penalty: 0.0001
+sparsity_target: 0.03
+train_size: 10000

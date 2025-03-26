@@ -1,0 +1,9 @@
+model_name: TinyLlama/TinyLlama-1.1B-Chat
+layer_index: 12
+dataset_path: ../openthoughts_filtered
+activations_path: ../data/activations_tinyllama.npy
+sae_model_path: ../models/sae_tinyllama.pt
+max_samples: 10000
+Okbeta: 5.0
+epochs: 10
+batch_size: 64

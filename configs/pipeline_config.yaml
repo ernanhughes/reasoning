@@ -1,0 +1,17 @@
+# configs/pipeline_config.yaml
+model:
+  name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  layer_index: 12
+
+prompts:
+  dataset: open-thoughts/OpenThoughts-114k
+  split: train
+  limit: 10000
+
+sparse_autoencoder:
+  path: sae_models/layer_12
+  train_if_missing: true
+  config: configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml
+
+database:
+  uri: postgresql://reasoning:reasoning@localhost:5432/reasoning
