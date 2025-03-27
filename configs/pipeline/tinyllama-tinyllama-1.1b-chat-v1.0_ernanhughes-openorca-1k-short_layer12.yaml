@@ -1,0 +1,55 @@
+# Auto-generated pipeline config
+_generated:
+  by: generate_sae_config.py
+  dataset: ernanhughes/openorca-1k-short
+  date: '2025-03-27 08:55:12'
+  model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+batch_size: 1
+database:
+  uri: postgresql://reasoning:reasoning@localhost:5432/reasoning
+model:
+  layer_index: 12
+  max_seq_len: 64
+  name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
+  pad_to_max: true
+pipeline:
+  activation_extraction:
+    device: cuda
+    enabled: true
+    enabled_reason: Required to get activations.
+    reason: Model forward pass benefits from GPU.
+  activation_storage:
+    device: cpu
+    enabled: true
+    enabled_reason: We want to persist extracted data.
+    reason: Storage can run on CPU safely.
+  feature_scoring:
+    device: cpu
+    enabled: true
+    enabled_reason: Compute ReasonScore for activations.
+    reason: Sparse vector scoring is CPU-safe.
+  sae_training:
+    device: cpu
+    enabled: true
+    enabled_reason: Train a new SAE for this setup.
+    reason: Efficient on CPU unless input_dim is huge.
+  tokenization:
+    device: cpu
+    enabled: true
+    enabled_reason: Always needed.
+    reason: Tokenization is lightweight and runs well on CPU.
+prompts:
+  dataset: ernanhughes/openorca-1k-short
+  limit: 1000
+  split: train
+  text_column: question
+sparse_autoencoder:
+  config: configs/sae\tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12.yaml
+  path: sae_models/tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12
+  train_if_missing: true
+reason_score:
+  mode: keywords
+  keyword_file: "configs/reasoning_keywords.txt"
+  top_k_normalization:
+    enabled: false    # ← Default OFFLike a circuitry to go I can't stand this drainage yet
+    k: 10

@@ -18,7 +18,8 @@ ipykernel
 scikit-learn
 numpy
 seaborn
-
+hydra-core 
+dspy
 gradio
 nltk
 ollama

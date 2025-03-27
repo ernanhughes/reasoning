@@ -1,0 +1,4 @@
+defaults:
+  - pipeline: pipeline/tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12.yaml  # Or any other config filename (w/o .yaml)
+
+pipeline: {}  # Will be overridden by file

@@ -4,8 +4,11 @@ import os
 import yaml
 
 class SparseAutoencoder(torch.nn.Module):
-    def __init__(self, input_dim, hidden_dim, activation="relu", sparsity_target=0.03, sparsity_penalty=0.0001):
+    def __init__(self, input_dim, hidden_dim, activation="relu", sparsity_target=0.03, sparsity_penalty=0.0001,
+             layer_index=None):
         super().__init__()
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
         self.encoder = torch.nn.Linear(input_dim, hidden_dim)
         self.decoder = torch.nn.Linear(hidden_dim, input_dim)
         self.activation_fn = getattr(torch.nn.functional, activation)
@@ -16,7 +19,8 @@ class SparseAutoencoder(torch.nn.Module):
             "hidden_dim": hidden_dim,
             "activation": activation,
             "sparsity_target": sparsity_target,
-            "sparsity_penalty": sparsity_penalty
+            "sparsity_penalty": sparsity_penalty,
+            "layer_index": layer_index
         }
 
     def forward(self, x):
@@ -30,12 +34,14 @@ class SparseAutoencoder(torch.nn.Module):
 
     @classmethod
     def from_config(cls, config):
+        print(config)
         return cls(
             input_dim=config["input_dim"],
             hidden_dim=config["hidden_dim"],
             activation=config.get("activation", "relu"),
             sparsity_target=config.get("sparsity_target", 0.03),
-            sparsity_penalty=config.get("sparsity_penalty", 0.0001)
+            sparsity_penalty=config.get("sparsity_penalty", 0.0001),
+            layer_index=config.get("layer_index", 12)
         )
 
     def save(self, path):
@@ -89,6 +95,8 @@ class SparseAutoencoder(torch.nn.Module):
             "activation": self.config["activation"],
             "sparsity_target": self.config["sparsity_target"],
             "sparsity_penalty": self.config["sparsity_penalty"],
+            "layer_index": self.config.get("layer_index", "N/A"),
+            "model_type": self.config.get("model_type", "N/A"),
             "total_params": sum(p.numel() for p in self.parameters()),
             "trainable_params": sum(p.numel() for p in self.parameters() if p.requires_grad)
         }
