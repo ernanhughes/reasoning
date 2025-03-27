@@ -1,6 +1,5 @@
 # configs/sae_config.yaml
 
-input_dim: 2048
 hidden_dim: 16384
 activation: relu
 
@@ -8,7 +7,7 @@ sparsity_penalty: 0.0001
 sparsity_target: 0.03
 
 lr: 0.001
-batch_size: 64
+batch_size: 16
 epochs: 10
 
 layer_index: 12

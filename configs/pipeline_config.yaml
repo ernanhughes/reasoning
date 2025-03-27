@@ -1,14 +1,17 @@
-# configs/pipeline_config.yaml
+batch_size: 8
 model:
   name: TinyLlama/TinyLlama-1.1B-Chat-v1.0
   layer_index: 12
+  max_seq_len: 32         # 👈 NEW: limit token length
+  pad_to_max: true         # 👈 NEW: pad to exactly 128
 
 prompts:
-  dataset: open-thoughts/OpenThoughts-114k
+  dataset: ernanhughes/openorca-1k-short
   split: train
-  limit: 10000
+  limit: 1000
+  text_column: question  # Optional; we’ll build full prompt from system_prompt + question
 
-sparse_autoencoder:
+sparse_autoencoder: 
   path: sae_models/layer_12
   train_if_missing: true
   config: configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml

@@ -1,12 +1,16 @@
 import os
 import yaml
 import torch
+import torch.nn.functional as F
+from torch.utils.data import DataLoader
 from datetime import datetime
 from transformers import AutoModel, AutoTokenizer
 from datasets import load_dataset
+from tqdm import tqdm
 
 from reasoning.logs.activation_log import ActivationLog
-from reasoning.logs.activation_log import ActivationLogStore
+from reasoning.logs.sae_training_log import SAETrainingLog
+from reasoning.sae.model import SparseAutoencoder
 
 
 class ReasoningPipeline:
@@ -50,11 +54,8 @@ class ReasoningPipeline:
             return pt_path
 
         prompts = self.load_prompts()
-        # Replace with actual model activation logic
-        layer_dim = self.model.config.hidden_size
-        fake_activations = torch.randn(len(prompts), 128, layer_dim)
-
-        torch.save(fake_activations, pt_path)
+        activations = self.extract_layer_activations(prompts)
+        torch.save(activations, pt_path)
         print(f"✅ Activations saved: {pt_path}")
         self.log_activation(sae_config_path, pt_path, skipped=False)
         return pt_path
@@ -68,21 +69,119 @@ class ReasoningPipeline:
         )
         log.save()
 
+    def extract_layer_activations(self, prompts):
+        print("⚙️ Extracting activations from model...")
+
+        layer_index = self.config["model"]["layer_index"]
+        max_len = self.config["model"].get("max_seq_len", 64)
+        pad_to_max = self.config["model"].get("pad_to_max", True)
+        batch_size = self.config.get("batch_size", 8)
+
+        def collate_fn(batch):
+            texts = [f"{ex['system_prompt'].strip()}\n{ex['question'].strip()}" for ex in batch]
+            return self.tokenizer(
+                texts,
+                return_tensors="pt",
+                padding="max_length" if pad_to_max else True,
+                truncation=True,
+                max_length=max_len
+            )
+
+        loader = DataLoader(prompts, batch_size=batch_size, shuffle=False, collate_fn=collate_fn)
+        all_activations = []
+
+        self.model.eval()
+        self.model.to("cuda" if torch.cuda.is_available() else "cpu")
+
+        with torch.no_grad():
+            for batch in tqdm(loader, desc="Extracting layer activations"):
+                input_ids = batch["input_ids"].to(self.model.device)
+                attention_mask = batch["attention_mask"].to(self.model.device)
+
+                outputs = self.model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
+                hidden = outputs.hidden_states[layer_index]  # [B, T, H]
+
+                if hidden.shape[1] < max_len:
+                    pad_len = max_len - hidden.shape[1]
+                    hidden = F.pad(hidden, (0, 0, 0, pad_len), mode="constant", value=0)
+                else:
+                    hidden = hidden[:, :max_len, :]
+
+                all_activations.append(hidden.cpu())
+
+        activations = torch.cat(all_activations, dim=0)
+        return activations
+
     def train_sae(self, activations_file):
         print("🔁 [3/5] Training SAE...")
+        sae_config_path = self.config["sparse_autoencoder"]["config"]
+        with open(sae_config_path, "r") as f:
+            sae_cfg = yaml.safe_load(f)
 
-        # Replace with real SAE training logic
-        class DummySAE:
-            path = "sae_models/layer_11"
-            final_loss = 0.0021
+        activations = torch.load(activations_file)
+        print("SAE input_dim must be", activations[0].numel())
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        print(f"✅ SAE trained: {DummySAE.path} (loss: {DummySAE.final_loss:.4f})")
-        return DummySAE
+
+        #model = SparseAutoencoder.from_config(sae_cfg).to(device)
+        # Auto-compute input_dim
+        hidden_size = self.model.config.hidden_size
+        max_seq_len = self.config["model"].get("max_seq_len", 128)
+        auto_input_dim = max_seq_len * hidden_size
+        # sae_cfg["input_dim"] = auto_input_dim
+        sae_cfg["input_dim"] = max_seq_len * hidden_size
+        print(f"ℹ️ Auto-setting SAE input_dim = {auto_input_dim} ({max_seq_len} x {hidden_size})")
+
+
+        model = SparseAutoencoder.from_config(sae_cfg).to(device)
+
+
+        optimizer = torch.optim.Adam(model.parameters(), lr=sae_cfg["lr"])
+        loss_fn = torch.nn.MSELoss()
+        batch_size = sae_cfg["batch_size"]
+        epochs = sae_cfg["epochs"]
+
+        model.train()
+        for epoch in tqdm(range(epochs), desc="Training SAE"):
+            for i in range(0, len(activations), batch_size):
+                batch = activations[i:i+batch_size].to(device)
+                batch = batch.view(batch.size(0), -1)
+                actual_dim = batch.shape[1]
+
+                expected_dim = sae_cfg["input_dim"]
+                if actual_dim != expected_dim:
+                    raise ValueError(f"❌ Activation shape mismatch: got {actual_dim}, expected {expected_dim}")
+
+                optimizer.zero_grad()
+                recon, z = model(batch)
+                loss = loss_fn(recon, batch) + model.sparsity_loss(z)
+                loss.backward()
+                optimizer.step()
+
+        output_dir = self.config["sparse_autoencoder"].get("output_dir", "sae_models/layer_11")
+        os.makedirs(output_dir, exist_ok=True)
+        model.save(output_dir)
+
+        print(f"✅ SAE trained: {output_dir} (loss: {loss.item():.4f})")
+
+        log = SAETrainingLog(
+            sae_config=sae_config_path,
+            activations_file=activations_file,
+            final_loss=loss.item(),
+            epochs=epochs,
+            created_at=datetime.utcnow().isoformat()
+        )
+        log.save()
+
+        return model
+
+    def load_sae(self):
+        output_dir = self.config["sparse_autoencoder"].get("output_dir", "sae_models/layer_11")
+        return SparseAutoencoder.load(output_dir)
 
     def score_features(self, sae, activations_file):
         print("🔁 [4/5] Scoring sparse features...")
-
-        # Replace with real ReasonScore logic
+        # Placeholder logic
         avg_score = 0.442
         print(f"✅ Avg ReasonScore: {avg_score:.3f}")
         return avg_score
@@ -92,7 +191,7 @@ class ReasoningPipeline:
         print("✅ Pipeline complete 🎉")
 
     def process(self):
-        self.extract_activations()
-        sae = self.train_sae("placeholder.pt")
-        self.score_features(sae, "placeholder.pt")
+        activations_file = self.extract_activations()
+        sae = self.train_sae(activations_file)
+        self.score_features(sae, activations_file)
         self.log_pipeline_run()
