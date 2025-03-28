@@ -3,6 +3,7 @@ import os
 
 # Optional: Add project root to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from dspy import Example
 
 from transformers import AutoModel, AutoTokenizer
 
@@ -24,10 +25,11 @@ def run_test():
     top_features = [3377, 2101, 4412]
 
     # Init DSPy steering module
-    steerer = SAESteeringModule(model, tokenizer, sae, top_feature_ids=top_features)
+    # steerer = SAESteeringModule(model, tokenizer, sae, top_features=top_features)
+    steerer = SAESteeringModule(model_name, tokenizer, sae)
 
     # Test example
-    example = {"instruction": "Explain why people vote in elections."}
+    example = Example(instruction="Explain why people vote in elections.")
     result = steerer(example)
 
     print("🧪 Steered Output:")

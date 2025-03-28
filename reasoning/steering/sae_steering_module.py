@@ -6,9 +6,6 @@ from reasoning.sae.utils import preprocess_for_sae
 
 
 class SAESteeringModule(Module):
-    class signature(Signature):
-        instruction: str
-        output: str
 
     def __init__(self, model_name, sae: SparseAutoencoder, top_features=None, max_seq_len=64, device=None):
         super().__init__()
