@@ -1,19 +1,16 @@
-import json
-import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
+from reasoning.logs.base import Loggable
 
 @dataclass
-class SAETrainingLog:
+class SAETrainingLog(Loggable):
     sae_config: str
     activations_file: str
     final_loss: float
     epochs: int
-    created_at: str
     model_summary: dict
 
-    def save(self, path="logs/sae_training_log.jsonl"):
-        record = asdict(self)
-        # Serialize dict as JSON string if needed
-        record["model_summary"] = json.dumps(record["model_summary"])
-        with open(path, "a") as f:
-            f.write(json.dumps(record) + "\n")
+    id: str = None
+    created_at: str = None
+
+    def get_log_path(self):
+        return "logs/sae_training_log.jsonl"

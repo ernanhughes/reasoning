@@ -29,6 +29,8 @@ pandas
 sqlalchemy
 psycopg2 
 python_dotenv
+ulid-py
+pytest
 
 huggingface_hub
 hf_transfer

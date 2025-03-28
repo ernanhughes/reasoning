@@ -1,60 +1,55 @@
 import torch
-import numpy as np
-from dspy.primitives.program import Module
+from dspy import Signature, Module
+from transformers import AutoTokenizer, AutoModel
+from reasoning.sae.model import SparseAutoencoder
+from reasoning.sae.utils import preprocess_for_sae
 
 
 class SAESteeringModule(Module):
-    def __init__(self, model, tokenizer, sae, top_feature_ids: list[int], injection_value: float = 3.0):
-        super().__init__()
-        self.model = model
-        self.tokenizer = tokenizer
-        self.sae = sae
-        self.top_feature_ids = top_feature_ids
-        self.injection_value = injection_value
+    class signature(Signature):
+        instruction: str
+        output: str
 
-    def forward(self, example: dict, trace: dict = None) -> dict:
-        # Prepare input text
+    def __init__(self, model_name, sae: SparseAutoencoder, top_features=None, max_seq_len=64, device=None):
+        super().__init__()
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.model = AutoModel.from_pretrained(model_name, output_hidden_states=True)
+        self.model.eval()
+
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.model.to(self.device)
+
+        self.sae = sae.to(self.device)
+        self.max_seq_len = max_seq_len
+        self.top_features = top_features or []  # List of feature IDs (int)
+
+    def forward(self, example):
         prompt = example["instruction"]
         if not prompt:
             raise ValueError("Missing 'instruction' in input example.")
-        inputs = self.tokenizer(prompt, return_tensors="pt", padding=True, truncation=True)
-        input_ids = inputs["input_ids"]
 
-        # Get hidden states from model
+        # Tokenize prompt
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, padding="max_length", max_length=self.max_seq_len).to(self.device)
+
         with torch.no_grad():
-            outputs = self.model(**inputs, output_hidden_states=True)
-            hidden = outputs.hidden_states[-1]  # You may want to use specific layer
+            outputs = self.model(**inputs)
+            layer_index = self.sae.layer_index
+            hidden = outputs.hidden_states[layer_index]  # shape: [1, T, H]
 
-        # Flatten and encode with SAE
-        sae_input = hidden.view(hidden.size(0), -1)
+            # Flatten for SAE: [1, T*H]
+            sae_input = preprocess_for_sae(hidden, self.sae.config["input_dim"]).to(self.device)
+            _, z = self.sae(sae_input)  # shape: [1, hidden_dim]
 
-        # Get expected input size from SAE
-        expected_input_dim = self.sae.input_dim
-        actual_input_dim = sae_input.shape[1]
-
-        if actual_input_dim < expected_input_dim:
-            pad_len = expected_input_dim - actual_input_dim
-            sae_input = torch.nn.functional.pad(sae_input, (0, pad_len))
-        elif actual_input_dim > expected_input_dim:
-            sae_input = sae_input[:, :expected_input_dim]
-
-        _, z = self.sae(sae_input)
-
-        # Inject top features
+        # Steer activations by enhancing top features
         z_steered = z.clone()
-        for fid in self.top_feature_ids:
-            z_steered[:, fid] = self.injection_value
+        for f in self.top_features:
+            if f < z_steered.shape[1]:
+                z_steered[0, f] += 1.0  # Simple boosting
 
-        # Decode (this is stub — real integration needed)
-        # For now, return the steered z vector as the output trace
+        z_steered = z_steered.detach().cpu().numpy()
+
         return {
-            "output": prompt + " (steered)",
-            "z_steered": z_steered.detach().cpu().numpy()
+            "output": prompt,  # (or use model.generate later)
+            "z_steered": z_steered,
+            "top_features": self.top_features
         }
-
-    @staticmethod
-    def to_numpy(tensor: torch.Tensor) -> np.ndarray:
-        """
-        Safely convert a tensor to NumPy, detaching from the graph and moving to CPU.
-        """
-        return tensor.detach().cpu().numpy()

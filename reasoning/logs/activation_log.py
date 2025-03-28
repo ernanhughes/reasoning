@@ -13,12 +13,13 @@ class ActivationLog:
     sae_config: str
     activations_file: str
     skipped: bool
-    created_at: str
 
-    def save(self, path=LOG_PATH):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "a") as f:
-            f.write(json.dumps(asdict(self)) + "\n")
+    id: str = None
+    created_at: str = None
+
+    def get_log_path(self):
+        return "logs/activation_log.jsonl"
+
 
 
 class ActivationLogStore:

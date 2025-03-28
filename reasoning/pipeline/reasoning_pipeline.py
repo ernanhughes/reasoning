@@ -250,9 +250,6 @@ class ReasoningPipeline:
         reason_scores = compute_reason_scores(activations, reasoning_mask)
         avg_score = sum(reason_scores) / len(reason_scores)
         logging.info(f"Avg ReasonScore: {avg_score:.3f}")
-
-        
-
         return reason_scores
 
     def log_pipeline_run(self):
