@@ -30,7 +30,7 @@ class SAEConfig:
     sparsity_target: float = 0.03
     sparsity_penalty: float = 0.0001
     lr: float = 0.001
-    batch_size: int = 32
+    batch_size: int = 1
     epochs: int = 10
 
 

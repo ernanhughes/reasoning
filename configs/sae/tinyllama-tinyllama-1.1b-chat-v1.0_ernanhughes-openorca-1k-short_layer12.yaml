@@ -2,7 +2,7 @@
 _generated:
   by: generate_sae_config.py
   dataset: ernanhughes/openorca-1k-short
-  date: '2025-03-27 08:55:12'
+  date: '2025-03-28 11:25:57'
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 activation: relu
 batch_size: 1

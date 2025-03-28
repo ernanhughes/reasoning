@@ -2,7 +2,7 @@
 _generated:
   by: generate_sae_config.py
   dataset: ernanhughes/openorca-1k-short
-  date: '2025-03-27 08:55:12'
+  date: '2025-03-28 11:25:57'
   model: TinyLlama/TinyLlama-1.1B-Chat-v1.0
 batch_size: 1
 database:
@@ -28,6 +28,11 @@ pipeline:
     enabled: true
     enabled_reason: Compute ReasonScore for activations.
     reason: Sparse vector scoring is CPU-safe.
+  sae_steering:
+    device: cpu
+    enabled: true
+    enabled_reason: SAE steering.
+    reason: To much memory to run on GPU.
   sae_training:
     device: cpu
     enabled: true
@@ -43,13 +48,14 @@ prompts:
   limit: 1000
   split: train
   text_column: question
+reason_score:
+  keyword_file: configs/reasoning_keywords.txt
+  mode: keywords
+  token_file: configs/reasoning_token_ids.txt
+  top_k_normalization:
+    enabled: false
+    k: 10
 sparse_autoencoder:
   config: configs/sae\tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12.yaml
   path: sae_models/tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12
   train_if_missing: true
-reason_score:
-  mode: keywords
-  keyword_file: "configs/reasoning_keywords.txt"
-  top_k_normalization:
-    enabled: false    # ← Default OFFLike a circuitry to go I can't stand this drainage yet
-    k: 10

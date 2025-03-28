@@ -1,8 +1,2 @@
 defaults:
-  - pipeline: pipeline/tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12.yaml  # Or any other config filename (w/o .yaml)
-    logging:
-      - use_db: false
-        log_dir: logs
-
-
-pipeline: {}  # Will be overridden by file
+- pipeline: tinyllama-tinyllama-1.1b-chat-v1.0_ernanhughes-openorca-1k-short_layer12

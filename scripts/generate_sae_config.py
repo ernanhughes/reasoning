@@ -32,7 +32,7 @@ def generate_configs(model_name: str, dataset: str, layer_index: int, max_seq_le
     # --- SAE Config ---
     sae_config = {
         "activation": "relu",
-        "batch_size": 64,
+        "batch_size": 1,
         "epochs": 10,
         "hidden_dim": hidden_dim,
         "input_dim": input_dim,
@@ -106,6 +106,12 @@ def generate_configs(model_name: str, dataset: str, layer_index: int, max_seq_le
                 "enabled_reason": "Train a new SAE for this setup.",
                 "device": "cpu",
                 "reason": "Efficient on CPU unless input_dim is huge."
+            },
+            "sae_steering": {
+                "enabled": True,
+                "enabled_reason": "SAE steering.",
+                "device": "cpu",
+                "reason": "To much memory to run on GPU."
             },
             "feature_scoring": {
                 "enabled": True,
