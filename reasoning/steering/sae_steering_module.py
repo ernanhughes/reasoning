@@ -1,52 +1,40 @@
 import torch
-from dspy import Signature, Module
+from dspy import Module
 from transformers import AutoTokenizer, AutoModel
 from reasoning.sae.model import SparseAutoencoder
 from reasoning.sae.utils import preprocess_for_sae
-
+from reasoning.scoring.reason_score import compute_mean_topk_feature_score
 
 class SAESteeringModule(Module):
-
-    def __init__(self, model_name, sae: SparseAutoencoder, top_features=None, max_seq_len=64, device=None):
+    def __init__(self, model_name: str, sae_path: str, layer_index: int, top_k: int = 20):
         super().__init__()
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModel.from_pretrained(model_name, output_hidden_states=True)
-        self.model.eval()
+        self.model = AutoModel.from_pretrained(model_name, output_hidden_states=True).eval()
+        self.model.to("cpu")
+        self.sae = SparseAutoencoder.load(sae_path)
+        self.layer_index = layer_index
+        self.top_k = top_k
 
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
-
-        self.sae = sae.to(self.device)
-        self.max_seq_len = max_seq_len
-        self.top_features = top_features or []  # List of feature IDs (int)
-
-    def forward(self, example):
-        prompt = example["instruction"]
-        if not prompt:
-            raise ValueError("Missing 'instruction' in input example.")
-
-        # Tokenize prompt
-        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, padding="max_length", max_length=self.max_seq_len).to(self.device)
+    def forward(self, prompt: str) -> dict:
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, padding="max_length", max_length=64)
+        inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
         with torch.no_grad():
             outputs = self.model(**inputs)
-            layer_index = self.sae.layer_index
-            hidden = outputs.hidden_states[layer_index]  # shape: [1, T, H]
+            hidden = outputs.hidden_states[self.layer_index]  # [1, T, H]
 
-            # Flatten for SAE: [1, T*H]
-            sae_input = preprocess_for_sae(hidden, self.sae.config["input_dim"]).to(self.device)
-            _, z = self.sae(sae_input)  # shape: [1, hidden_dim]
+        sae_input = preprocess_for_sae(hidden, self.sae.config["input_dim"])
 
-        # Steer activations by enhancing top features
-        z_steered = z.clone()
-        for f in self.top_features:
-            if f < z_steered.shape[1]:
-                z_steered[0, f] += 1.0  # Simple boosting
+        # move to cpu
+        sae_device = torch.device("cpu")
+        self.sae.to(sae_device)
+        sae_input = sae_input.to(sae_device)
 
-        z_steered = z_steered.detach().cpu().numpy()
+        with torch.no_grad():
+            _, z = self.sae(sae_input)
 
+        score = compute_mean_topk_feature_score(hidden, self.sae, top_k=self.top_k)
         return {
-            "output": prompt,  # (or use model.generate later)
-            "z_steered": z_steered,
-            "top_features": self.top_features
+            "prompt": prompt,
+            "score": round(score, 5)
         }
