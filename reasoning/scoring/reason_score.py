@@ -63,10 +63,15 @@ def compute_reason_scores(activations: torch.Tensor, reasoning_mask: torch.Tenso
 
 def compute_topk_reason_scores(z: torch.Tensor, reasoning_mask: torch.Tensor, k=10) -> List[float]:
     """
-    z: [B, T, F] sparse activations
-    reasoning_mask: [B, T] bool
+    Computes top-k mean reasoning activations across sparse features.
+
+    Args:
+        z: Tensor of shape [B, T, F] — sparse feature activations
+        reasoning_mask: Tensor of shape [B, T] — binary mask for reasoning tokens
+        k: Number of top active features to consider
+
     Returns:
-        mean ReasonScore per feature (top-k normalized)
+        List[float] — mean score per feature across batch (length = F)
     """
     B, T, F = z.shape
     z = z.cpu()
@@ -79,24 +84,32 @@ def compute_topk_reason_scores(z: torch.Tensor, reasoning_mask: torch.Tensor, k=
         z_b = z[b]                     # [T, F]
         mask_b = reasoning_mask[b]    # [T]
 
-        # Average activation per feature across sequence
-        avg_f = z_b.mean(dim=0)  # [F]
-        topk = torch.topk(avg_f, k=k).indices.tolist()
-
-        # Get reasoning tokens
-        if mask_b.sum() == 0:
+        if mask_b.sum() == 0 or z_b.shape[0] != mask_b.shape[0]:
             continue
 
-        reasoning_avg = z_b[mask_b].mean(dim=0)  # [F]
+        # Mean activation per feature across full sequence
+        full_avg = z_b.mean(dim=0)  # [F]
 
-        for f in topk:
-            rs = reasoning_avg[f] / (avg_f[f] + 1e-6)
-            feature_scores[f] += rs
-            feature_counts[f] += 1
+        # Top-k active features in this prompt
+        topk_indices = torch.topk(full_avg, k=k).indices
 
-    # Normalize across prompts
+        # Mean activation across reasoning tokens only
+        reasoning_avg = z_b[mask_b.bool()].mean(dim=0)  # [F]
+
+        # For each top-k feature, compute ratio of reasoning vs overall
+        for f in topk_indices:
+            f = f.item()
+            if full_avg[f] > 1e-6:  # avoid divide-by-zero
+                score = reasoning_avg[f] / full_avg[f]
+                feature_scores[f] += score
+                feature_counts[f] += 1
+
     scores = (feature_scores / feature_counts.clamp(min=1)).tolist()
     return scores
+
+
+
+
 
 def compute_mean_topk_feature_score(hidden_states: torch.Tensor, sae_model, top_k: int = 20) -> float:
     """

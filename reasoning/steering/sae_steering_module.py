@@ -5,6 +5,7 @@ from dspy.primitives.program import Module
 
 class SAESteeringModule(Module):
     def __init__(self, model, tokenizer, sae, top_feature_ids: list[int], injection_value: float = 3.0):
+        super().__init__()
         self.model = model
         self.tokenizer = tokenizer
         self.sae = sae

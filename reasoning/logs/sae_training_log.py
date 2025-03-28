@@ -9,8 +9,11 @@ class SAETrainingLog:
     final_loss: float
     epochs: int
     created_at: str
+    model_summary: dict
 
-    def save(self, path="logs/sae_training_logs.jsonl"):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
+    def save(self, path="logs/sae_training_log.jsonl"):
+        record = asdict(self)
+        # Serialize dict as JSON string if needed
+        record["model_summary"] = json.dumps(record["model_summary"])
         with open(path, "a") as f:
-            f.write(json.dumps(asdict(self)) + "\n")
+            f.write(json.dumps(record) + "\n")

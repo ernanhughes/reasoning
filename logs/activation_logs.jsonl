@@ -1,4 +1,4 @@
-{"sae_config": "configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml", "activations_file": "data/activations\\tinyllama-tinyllama-1.1b-chat-v1.0-layer11.pt", "skipped": true, "created_at": "2025-03-26T21:51:11.306005"}
+OK but I have to {"sae_config": "configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml", "activations_file": "data/activations\\tinyllama-tinyllama-1.1b-chat-v1.0-layer11.pt", "skipped": true, "created_at": "2025-03-26T21:51:11.306005"}
 {"sae_config": "configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml", "activations_file": "data/activations\\tinyllama-tinyllama-1.1b-chat-v1.0-layer11.pt", "skipped": false, "created_at": "2025-03-26T21:51:48.482756"}
 {"sae_config": "configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml", "activations_file": "data/activations\\tinyllama-tinyllama-1.1b-chat-v1.0-layer11.pt", "skipped": true, "created_at": "2025-03-26T21:58:12.464193"}
 {"sae_config": "configs/sae/tinyllama-tinyllama-1.1b-chat-v1.0-layer11.yaml", "activations_file": "data/activations\\tinyllama-tinyllama-1.1b-chat-v1.0-layer11.pt", "skipped": false, "created_at": "2025-03-26T21:58:48.953828"}

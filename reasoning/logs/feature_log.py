@@ -1,17 +1,16 @@
-import json
-import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from reasoning.logs.base import Loggable
 
 @dataclass
-class FeatureLog:
-    sae_config: str
-    layer_index: int
-    top_features: list[int]
-    avg_reason_score: float
-    reason_score_type: str
+class FeatureLog(Loggable):
+    prompt_id: str               # Links back to PromptLog
+    feature_id: int              # Feature index (0..F-1)
+    reason_score: float          # Global ReasonScore
+    topk_score: float            # Top-K normalized ReasonScore
+    sae_config: str              # Path to SAE config file
+    layer_index: int             # Optional: for sweep analysis
     created_at: str
 
-    def save(self, path="logs/feature_logs.jsonl"):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "a") as f:
-            f.write(json.dumps(asdict(self)) + "\n")
+    def get_log_path(self):
+        return "logs/feature_log.jsonl"

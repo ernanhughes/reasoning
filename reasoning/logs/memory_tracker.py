@@ -23,7 +23,6 @@ def log_memory(step: str, log_path="logs/memory_log.jsonl", verbose=True):
         cpu_used_mb=round(cpu_used, 2),
         timestamp=datetime.utcnow().isoformat()
     )
-
     log.save(log_path)
 
     if verbose:
